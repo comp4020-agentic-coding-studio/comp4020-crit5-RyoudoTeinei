@@ -3,36 +3,93 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COMP4020 prototype</title>
+    <title>Bloomshift — a three-minute survivor</title>
     <meta
       name="description"
-      content="Replace this with one sentence saying what this page is. A search result and a link preview both show it."
+      content="A bright three-minute survival game about movement, automatic weapons and choosing how a tiny bloom grows."
     />
-
-    <!--
-      The link-preview card: public/card.png, 1200x630 --- replace it. The URL
-      resolves against this page, like any link. No og:title/og:description:
-      scrapers fall back to the <title> and description above.
-    -->
     <meta property="og:type" content="website" />
     <meta property="og:image" content="./card.png" />
     <meta name="twitter:card" content="summary_large_image" />
-
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header>
-      <nav aria-label="Primary">
-        <a href="./">Home</a>
-      </nav>
-    </header>
+    <nav class="topbar" aria-label="Primary">
+      <a class="wordmark" href="./" aria-label="Bloomshift home">
+        <span class="wordmark-mark" aria-hidden="true"></span>
+        <span>BLOOMSHIFT</span>
+      </a>
+      <button class="sound-button" id="sound-toggle" type="button" aria-label="Mute sound">
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2-3.74v7.48A4.5 4.5 0 0 0 16.5 12Z" />
+          <path class="sound-wave" d="M17.5 5.5a8.5 8.5 0 0 1 0 13" />
+        </svg>
+      </button>
+    </nav>
+
     <main>
-      <h1>COMP4020 prototype</h1>
-      <p>
-        Replace this with your prototype. This week's brief is on the course website;
-        <code>spec/README.md</code> explains how the checks in this repo relate to it.
-      </p>
+      <section class="game-frame" aria-labelledby="game-title">
+        <canvas id="game" aria-label="Bloomshift game arena"></canvas>
+
+        <div class="hud is-hidden" id="hud" aria-live="polite">
+          <div class="timer-block">
+            <span class="eyebrow">BLOOM CLOSES IN</span>
+            <strong id="timer">03:00</strong>
+          </div>
+          <div class="health" id="health" aria-label="Five health remaining"></div>
+          <div class="level-block">
+            <span class="eyebrow">GROWTH <b id="level">01</b></span>
+            <span class="xp-track"><span id="xp-fill"></span></span>
+          </div>
+        </div>
+
+        <div class="screen start-screen" id="start-screen">
+          <div class="title-lockup">
+            <p class="kicker">A THREE-MINUTE SURVIVOR</p>
+            <h1 id="game-title">BLOOM<br /><i>SHIFT</i></h1>
+            <button class="play-button" id="start-button" type="button" aria-label="Begin run">
+              <span aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="edition">FIELD TEST · 001</div>
+        </div>
+
+        <div class="screen level-screen" id="level-screen" hidden>
+          <p class="kicker">CHOOSE A MUTATION</p>
+          <h2>THE BLOOM ADAPTS</h2>
+          <div class="upgrade-grid" id="upgrade-grid"></div>
+        </div>
+
+        <div class="screen result-screen" id="result-screen" hidden>
+          <div class="result-card">
+            <p class="kicker" id="result-kicker">RUN COMPLETE</p>
+            <h2 id="result-title">FULL BLOOM</h2>
+            <dl class="run-stats">
+              <div><dt>TIME</dt><dd id="result-time">03:00</dd></div>
+              <div><dt>CLEARED</dt><dd id="result-kills">000</dd></div>
+              <div><dt>GROWTH</dt><dd id="result-level">01</dd></div>
+            </dl>
+            <button class="replay-button" id="replay-button" type="button" aria-label="Begin another run">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="boss-banner" id="boss-banner" hidden>
+          <span>FINAL BLOOM</span>
+          <span class="boss-track"><span id="boss-fill"></span></span>
+        </div>
+      </section>
     </main>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
