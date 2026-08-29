@@ -102,7 +102,7 @@ function beginRun(): void {
   state = "playing";
   elapsed = 0;
   kills = 0;
-  spawnTimer = 1.15;
+  spawnTimer = 1.8;
   enemySequence = 0;
   bossSpawned = false;
   shake = 0;
@@ -120,9 +120,28 @@ function beginRun(): void {
   levelScreen.hidden = true;
   bossBanner.hidden = true;
   hud.classList.remove("is-hidden");
+  spawnOpeningEnemy();
   ensureAudio();
   tone(330, 0.11, "sine", 0.04);
   refreshHud();
+}
+
+function spawnOpeningEnemy(): void {
+  const radius = 16;
+  const point = width >= height
+    ? { x: width + radius, y: height * 0.5 }
+    : { x: width * 0.5, y: -radius };
+  enemies.push({
+    ...point,
+    id: enemySequence++,
+    kind: "bud",
+    radius,
+    speed: 46,
+    health: 3,
+    maxHealth: 3,
+    angle: 0,
+    hitFlash: 0,
+  });
 }
 
 function updateGame(dt: number): void {
