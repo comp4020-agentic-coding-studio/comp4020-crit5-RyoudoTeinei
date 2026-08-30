@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloomshift — a three-minute survivor</title>
+    <title>Bloomshift — a five-minute survivor</title>
     <meta
       name="description"
-      content="A bright three-minute survival game about movement, automatic weapons and choosing how a tiny bloom grows."
+      content="A bright five-minute survival game about movement, automatic weapons and choosing how a tiny bloom grows."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="./card.png" />
@@ -39,8 +39,8 @@
 
         <div class="hud is-hidden" id="hud" aria-live="polite">
           <div class="timer-block">
-            <span class="eyebrow">BLOOM CLOSES IN</span>
-            <strong id="timer">03:00</strong>
+            <span class="eyebrow" id="timer-label">BLOOM CLOSES IN</span>
+            <strong id="timer">05:00</strong>
           </div>
           <div class="health" id="health" aria-label="Five health remaining"></div>
           <div class="level-block">
@@ -51,7 +51,7 @@
 
         <div class="screen start-screen" id="start-screen">
           <div class="title-lockup">
-            <p class="kicker">A THREE-MINUTE SURVIVOR</p>
+            <p class="kicker">A FIVE-MINUTE SURVIVOR</p>
             <h1 id="game-title">BLOOM<br /><i>SHIFT</i></h1>
             <button class="play-button" id="start-button" type="button" aria-label="Begin run">
               <span aria-hidden="true"></span>
@@ -75,11 +75,16 @@
               <div><dt>CLEARED</dt><dd id="result-kills">000</dd></div>
               <div><dt>GROWTH</dt><dd id="result-level">01</dd></div>
             </dl>
-            <button class="replay-button" id="replay-button" type="button" aria-label="Begin another run">
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
-              </svg>
-            </button>
+            <div class="result-actions">
+              <button class="continue-button" id="continue-button" type="button" hidden>
+                KEEP GROWING <span aria-hidden="true">→</span>
+              </button>
+              <button class="replay-button" id="replay-button" type="button" aria-label="Begin another run">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

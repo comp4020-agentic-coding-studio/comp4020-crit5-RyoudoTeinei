@@ -7,7 +7,8 @@ interface Point { x: number; y: number }
 interface Player extends Point {
   radius: number; health: number; maxHealth: number; speed: number; lastHitAt: number;
   fireDelay: number; fireTimer: number; projectileCount: number; projectileDamage: number;
-  projectileSpeed: number; pickupRadius: number; level: number; xp: number;
+  projectileSpeed: number; pickupRadius: number; deathExplosionRadius: number;
+  deathExplosionDamage: number; level: number; xp: number;
 }
 interface Enemy extends Point {
   id: number; kind: EnemyKind; radius: number; speed: number; health: number;
@@ -16,6 +17,7 @@ interface Enemy extends Point {
 interface Projectile extends Point { vx: number; vy: number; radius: number; damage: number; life: number }
 interface Gem extends Point { value: number; vx: number; vy: number; age: number }
 interface Particle extends Point { vx: number; vy: number; life: number; maxLife: number; colour: string; size: number }
+interface Shockwave extends Point { age: number; duration: number; maxRadius: number; colour: string }
 interface Upgrade { id: string; icon: string; name: string; detail: string; apply: () => void }
 
 const must = <T extends Element>(selector: string): T => {
@@ -31,6 +33,7 @@ const context: CanvasRenderingContext2D = drawingContext;
 
 const startButton = must<HTMLButtonElement>("#start-button");
 const replayButton = must<HTMLButtonElement>("#replay-button");
+const continueButton = must<HTMLButtonElement>("#continue-button");
 const soundButton = must<HTMLButtonElement>("#sound-toggle");
 const startScreen = must<HTMLElement>("#start-screen");
 const levelScreen = must<HTMLElement>("#level-screen");
@@ -38,6 +41,7 @@ const resultScreen = must<HTMLElement>("#result-screen");
 const upgradeGrid = must<HTMLElement>("#upgrade-grid");
 const hud = must<HTMLElement>("#hud");
 const timerText = must<HTMLElement>("#timer");
+const timerLabel = must<HTMLElement>("#timer-label");
 const healthElement = must<HTMLElement>("#health");
 const levelText = must<HTMLElement>("#level");
 const xpFill = must<HTMLElement>("#xp-fill");
@@ -49,8 +53,8 @@ const resultTime = must<HTMLElement>("#result-time");
 const resultKills = must<HTMLElement>("#result-kills");
 const resultLevel = must<HTMLElement>("#result-level");
 
-const ROUND_SECONDS = 180;
-const BOSS_AT_SECONDS = 145;
+const ROUND_SECONDS = 300;
+const BOSS_AT_SECONDS = 255;
 const colours = {
   ink: "#14213d", paper: "#f7f2e8", blue: "#39bff0", coral: "#ff5f56",
   lime: "#d8f04e", violet: "#7458e8", yellow: "#ffd166",
@@ -64,10 +68,14 @@ let kills = 0;
 let spawnTimer = 0;
 let enemySequence = 0;
 let bossSpawned = false;
+let endlessMode = false;
 let shake = 0;
+let lastExplosionSoundAt = -1_000;
 let lastFrame = performance.now();
 let muted = false;
 let audioContext: AudioContext | null = null;
+let soundBus: GainNode | null = null;
+let noiseBuffer: AudioBuffer | null = null;
 let pointerTarget: Point = { x: 0, y: 0 };
 let pointerActive = false;
 const keys = new Set<string>();
@@ -75,13 +83,15 @@ let enemies: Enemy[] = [];
 let projectiles: Projectile[] = [];
 let gems: Gem[] = [];
 let particles: Particle[] = [];
+let shockwaves: Shockwave[] = [];
 let player: Player = freshPlayer();
 
 function freshPlayer(): Player {
   return {
     x: width / 2, y: height / 2, radius: 17, health: 5, maxHealth: 5, speed: 255,
     lastHitAt: -10_000, fireDelay: 0.58, fireTimer: 0, projectileCount: 1,
-    projectileDamage: 2, projectileSpeed: 640, pickupRadius: 92, level: 1, xp: 0,
+    projectileDamage: 2, projectileSpeed: 640, pickupRadius: 92,
+    deathExplosionRadius: 0, deathExplosionDamage: 0, level: 1, xp: 0,
   };
 }
 
@@ -105,11 +115,14 @@ function beginRun(): void {
   spawnTimer = 1.8;
   enemySequence = 0;
   bossSpawned = false;
+  endlessMode = false;
   shake = 0;
+  lastExplosionSoundAt = -1_000;
   enemies = [];
   projectiles = [];
   gems = [];
   particles = [];
+  shockwaves = [];
   player = freshPlayer();
   player.x = width / 2;
   player.y = height / 2;
@@ -122,7 +135,7 @@ function beginRun(): void {
   hud.classList.remove("is-hidden");
   spawnOpeningEnemy();
   ensureAudio();
-  tone(330, 0.11, "sine", 0.04);
+  playRunStart();
   refreshHud();
 }
 
@@ -145,9 +158,9 @@ function spawnOpeningEnemy(): void {
 }
 
 function updateGame(dt: number): void {
-  elapsed = Math.min(ROUND_SECONDS, elapsed + dt);
+  elapsed = endlessMode ? elapsed + dt : Math.min(ROUND_SECONDS, elapsed + dt);
   updatePlayer(dt);
-  if (!bossSpawned) {
+  if (!bossSpawned || endlessMode) {
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       spawnEnemy();
@@ -161,8 +174,9 @@ function updateGame(dt: number): void {
   updateEnemies(dt);
   updateGems(dt);
   updateParticles(dt);
+  updateShockwaves(dt);
   shake = Math.max(0, shake - dt * 28);
-  if (elapsed >= ROUND_SECONDS && state === "playing") endRun(false);
+  if (!endlessMode && elapsed >= ROUND_SECONDS && state === "playing") endRun(false);
   refreshHud();
 }
 
@@ -208,7 +222,7 @@ function updateWeapon(dt: number): void {
     });
   }
   player.fireTimer = player.fireDelay;
-  tone(520, 0.035, "triangle", 0.012);
+  playVolley();
 }
 
 function updateProjectiles(dt: number): void {
@@ -224,6 +238,7 @@ function updateProjectiles(dt: number): void {
         enemy.health -= shot.damage;
         enemy.hitFlash = 0.09;
         burst(shot.x, shot.y, enemy.kind === "boss" ? colours.violet : colours.coral, 4, 90);
+        playImpact(enemy.kind === "boss");
         consumed = true;
         if (enemy.health <= 0) defeatEnemy(j);
       }
@@ -252,7 +267,7 @@ function updateEnemies(dt: number): void {
         player.lastHitAt = result.lastHitAt;
         shake = 12;
         burst(player.x, player.y, colours.ink, 13, 190);
-        tone(92, 0.18, "sawtooth", 0.055);
+        playPlayerHurt();
         enemy.x -= (dx / length) * 32;
         enemy.y -= (dy / length) * 32;
         if (result.ended) { endRun(false); return; }
@@ -280,7 +295,7 @@ function updateGems(dt: number): void {
     if (distance < player.radius + 9) {
       player.xp += gem.value;
       gems.splice(i, 1);
-      tone(760 + player.xp * 7, 0.035, "sine", 0.016);
+      playPickup(player.xp);
       if (player.xp >= experienceNeeded(player.level)) openLevelUp();
     }
   }
@@ -295,6 +310,13 @@ function updateParticles(dt: number): void {
     particle.vy *= Math.pow(0.35, dt);
     particle.life -= dt;
     if (particle.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function updateShockwaves(dt: number): void {
+  for (let i = shockwaves.length - 1; i >= 0; i -= 1) {
+    shockwaves[i].age += dt;
+    if (shockwaves[i].age >= shockwaves[i].duration) shockwaves.splice(i, 1);
   }
 }
 
@@ -325,16 +347,17 @@ function spawnBoss(): void {
     speed: 31, health: 72, maxHealth: 72, angle: 0, hitFlash: 0,
   });
   shake = 8;
-  tone(72, 0.5, "sawtooth", 0.045);
+  playBossArrival();
 }
 
 function defeatEnemy(index: number): void {
   const enemy = enemies[index];
+  if (!enemy) return;
   enemies.splice(index, 1);
   if (enemy.kind === "boss") {
     burst(enemy.x, enemy.y, colours.violet, 44, 310);
-    tone(196, 0.3, "triangle", 0.05);
-    window.setTimeout(() => state === "playing" && endRun(true), 350);
+    playBossDefeat();
+    endRun(true);
     return;
   }
   kills += 1;
@@ -344,7 +367,30 @@ function defeatEnemy(index: number): void {
     gems.push({ x: enemy.x, y: enemy.y, value: 1, vx: Math.cos(angle) * 70, vy: Math.sin(angle) * 70, age: 0 });
   }
   burst(enemy.x, enemy.y, enemy.kind === "dart" ? colours.yellow : colours.coral, 8, 150);
-  tone(210, 0.045, "square", 0.012);
+  playEnemyDefeat(enemy.kind);
+  if (player.deathExplosionRadius > 0) triggerDeathExplosion(enemy);
+}
+
+function triggerDeathExplosion(origin: Enemy): void {
+  const radius = player.deathExplosionRadius;
+  shockwaves.push({
+    x: origin.x, y: origin.y, age: 0, duration: 0.32,
+    maxRadius: radius, colour: colours.yellow,
+  });
+  burst(origin.x, origin.y, colours.yellow, 14, 230);
+  playDeathExplosion();
+  const defeated: Enemy[] = [];
+  for (const target of enemies) {
+    const reach = radius + target.radius;
+    if (distanceSquared(origin, target) > reach * reach) continue;
+    target.health -= player.deathExplosionDamage;
+    target.hitFlash = 0.12;
+    if (target.health <= 0) defeated.push(target);
+  }
+  for (const target of defeated) {
+    const targetIndex = enemies.indexOf(target);
+    if (targetIndex >= 0) defeatEnemy(targetIndex);
+  }
 }
 
 function openLevelUp(): void {
@@ -365,8 +411,7 @@ function openLevelUp(): void {
     upgradeGrid.append(button);
   }
   levelScreen.hidden = false;
-  tone(440, 0.08, "sine", 0.03);
-  window.setTimeout(() => tone(660, 0.12, "sine", 0.03), 70);
+  playLevelUp();
   window.setTimeout(() => upgradeGrid.querySelector<HTMLButtonElement>("button")?.focus(), 20);
 }
 
@@ -374,7 +419,7 @@ function chooseUpgrade(upgrade: Upgrade): void {
   upgrade.apply();
   levelScreen.hidden = true;
   state = "playing";
-  tone(880, 0.12, "triangle", 0.035);
+  playUpgradeChosen();
   burst(player.x, player.y, colours.lime, 18, 190);
   canvas.focus();
 }
@@ -386,6 +431,13 @@ const allUpgrades: Upgrade[] = [
   { id: "swift", icon: "➜", name: "Long stems", detail: "+15% MOVEMENT", apply: () => { player.speed *= 1.15; } },
   { id: "magnet", icon: "◇", name: "Sweet scent", detail: "+50 PICKUP REACH", apply: () => { player.pickupRadius += 50; } },
   { id: "mend", icon: "♥", name: "Fresh leaf", detail: "+1 HEART", apply: () => { player.health = Math.min(player.maxHealth, player.health + 1); } },
+  {
+    id: "burst", icon: "✺", name: "Bursting seed", detail: "DEFEATED ENEMIES EXPLODE",
+    apply: () => {
+      player.deathExplosionRadius = player.deathExplosionRadius ? player.deathExplosionRadius + 14 : 96;
+      player.deathExplosionDamage = player.deathExplosionDamage ? player.deathExplosionDamage + 1 : 3;
+    },
+  },
 ];
 
 function endRun(won: boolean): void {
@@ -398,13 +450,30 @@ function endRun(won: boolean): void {
   resultTime.textContent = formatTime(elapsed);
   resultKills.textContent = String(kills).padStart(3, "0");
   resultLevel.textContent = String(player.level).padStart(2, "0");
+  continueButton.hidden = !won;
   resultScreen.hidden = false;
-  tone(won ? 392 : 110, won ? 0.55 : 0.35, won ? "sine" : "sawtooth", 0.05);
+  playRunEnd(won);
   window.setTimeout(() => replayButton.focus(), 50);
 }
 
+function continueRun(): void {
+  if (state !== "won") return;
+  state = "playing";
+  endlessMode = true;
+  elapsed = Math.max(elapsed, ROUND_SECONDS);
+  spawnTimer = 0.35;
+  resultScreen.hidden = true;
+  hud.classList.remove("is-hidden");
+  playRunStart();
+  refreshHud();
+  canvas.focus();
+}
+
 function refreshHud(): void {
-  timerText.textContent = formatTime(Math.max(0, ROUND_SECONDS - elapsed));
+  timerLabel.textContent = endlessMode ? "STILL GROWING" : "BLOOM CLOSES IN";
+  timerText.textContent = endlessMode
+    ? `+${formatTime(Math.max(0, elapsed - ROUND_SECONDS))}`
+    : formatTime(Math.max(0, ROUND_SECONDS - elapsed));
   levelText.textContent = String(player.level).padStart(2, "0");
   xpFill.style.width = `${Math.min(100, (player.xp / experienceNeeded(player.level)) * 100)}%`;
   healthElement.replaceChildren();
@@ -424,6 +493,7 @@ function render(timestamp: number): void {
   drawField(timestamp);
   if (state === "menu") drawMenuGarden(timestamp);
   else {
+    for (const shockwave of shockwaves) drawShockwave(shockwave);
     for (const gem of gems) drawGem(gem, timestamp);
     for (const projectile of projectiles) drawProjectile(projectile);
     for (const enemy of enemies) drawEnemy(enemy);
@@ -583,6 +653,18 @@ function drawParticle(particle: Particle): void {
   context.globalAlpha = 1;
 }
 
+function drawShockwave(shockwave: Shockwave): void {
+  const progress = Math.min(1, shockwave.age / shockwave.duration);
+  context.save();
+  context.globalAlpha = (1 - progress) * 0.75;
+  context.strokeStyle = shockwave.colour;
+  context.lineWidth = 7 * (1 - progress) + 1;
+  context.beginPath();
+  context.arc(shockwave.x, shockwave.y, shockwave.maxRadius * progress, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
 function burst(x: number, y: number, colour: string, count: number, speed: number): void {
   for (let i = 0; i < count; i += 1) {
     const angle = Math.random() * Math.PI * 2;
@@ -621,6 +703,7 @@ window.addEventListener("keyup", (event) => keys.delete(event.code));
 window.addEventListener("resize", resizeCanvas);
 startButton.addEventListener("click", beginRun);
 replayButton.addEventListener("click", beginRun);
+continueButton.addEventListener("click", continueRun);
 soundButton.addEventListener("click", () => {
   muted = !muted;
   soundButton.classList.toggle("is-muted", muted);
@@ -629,21 +712,145 @@ soundButton.addEventListener("click", () => {
 });
 
 function ensureAudio(): void {
-  if (!audioContext) audioContext = new AudioContext();
+  if (!audioContext) {
+    audioContext = new AudioContext();
+    const compressor = audioContext.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 5;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.16;
+    soundBus = audioContext.createGain();
+    const outputGain = audioContext.createGain();
+    soundBus.gain.value = 2.7;
+    outputGain.gain.value = 1.5;
+    soundBus.connect(compressor).connect(outputGain).connect(audioContext.destination);
+  }
   if (audioContext.state === "suspended") void audioContext.resume();
 }
 
-function tone(frequency: number, duration: number, type: OscillatorType, volume: number): void {
-  if (muted || !audioContext) return;
+function tone(
+  frequency: number,
+  duration: number,
+  type: OscillatorType,
+  volume: number,
+  endFrequency = frequency,
+  delay = 0,
+): void {
+  if (muted || !audioContext || !soundBus) return;
+  const now = audioContext.currentTime + delay;
   const oscillator = audioContext.createOscillator();
   const gain = audioContext.createGain();
   oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-  gain.gain.setValueAtTime(volume, audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
-  oscillator.connect(gain).connect(audioContext.destination);
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + duration);
+  oscillator.frequency.setValueAtTime(frequency, now);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + duration);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.008, duration * 0.25));
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  oscillator.connect(gain).connect(soundBus);
+  oscillator.start(now);
+  oscillator.stop(now + duration + 0.01);
+}
+
+function noise(
+  duration: number,
+  volume: number,
+  frequency: number,
+  filterType: BiquadFilterType = "bandpass",
+  delay = 0,
+): void {
+  if (muted || !audioContext || !soundBus) return;
+  if (!noiseBuffer) {
+    noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
+    const channel = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < channel.length; i += 1) channel[i] = Math.random() * 2 - 1;
+  }
+  const now = audioContext.currentTime + delay;
+  const source = audioContext.createBufferSource();
+  const filter = audioContext.createBiquadFilter();
+  const gain = audioContext.createGain();
+  source.buffer = noiseBuffer;
+  filter.type = filterType;
+  filter.frequency.value = frequency;
+  filter.Q.value = 0.8;
+  gain.gain.setValueAtTime(volume, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  source.connect(filter).connect(gain).connect(soundBus);
+  source.start(now);
+  source.stop(now + duration + 0.01);
+}
+
+function playRunStart(): void {
+  tone(294, 0.13, "sine", 0.026, 392);
+  tone(440, 0.16, "triangle", 0.018, 587, 0.08);
+}
+
+function playVolley(): void {
+  tone(610, 0.045, "triangle", 0.011, 370);
+  noise(0.025, 0.006, 1900, "highpass");
+}
+
+function playImpact(isBoss: boolean): void {
+  tone(isBoss ? 132 : 190, 0.045, "square", isBoss ? 0.012 : 0.007, 95);
+  noise(0.032, isBoss ? 0.016 : 0.009, isBoss ? 520 : 1200);
+}
+
+function playEnemyDefeat(kind: EnemyKind): void {
+  const base = kind === "brute" ? 145 : kind === "dart" ? 270 : 210;
+  tone(base, 0.075, "triangle", 0.014, base * 1.55);
+}
+
+function playDeathExplosion(): void {
+  const now = performance.now();
+  if (now - lastExplosionSoundAt < 65) return;
+  lastExplosionSoundAt = now;
+  tone(105, 0.16, "sawtooth", 0.028, 52);
+  noise(0.11, 0.022, 520, "lowpass");
+}
+
+function playPickup(xp: number): void {
+  const note = 660 * 2 ** ((xp % 5) / 12);
+  tone(note, 0.065, "sine", 0.018, note * 1.08);
+  tone(note * 2, 0.035, "sine", 0.008, note * 2.1, 0.018);
+}
+
+function playPlayerHurt(): void {
+  tone(118, 0.22, "sawtooth", 0.047, 58);
+  noise(0.12, 0.026, 360, "lowpass");
+}
+
+function playBossArrival(): void {
+  tone(82, 0.58, "sawtooth", 0.035, 52);
+  tone(123, 0.45, "square", 0.018, 74, 0.12);
+  noise(0.28, 0.018, 240, "lowpass");
+}
+
+function playLevelUp(): void {
+  tone(440, 0.1, "sine", 0.027, 466);
+  tone(554, 0.11, "sine", 0.027, 587, 0.075);
+  tone(660, 0.16, "triangle", 0.03, 880, 0.15);
+}
+
+function playUpgradeChosen(): void {
+  tone(440, 0.18, "triangle", 0.018, 880);
+  tone(660, 0.2, "sine", 0.018, 990, 0.035);
+}
+
+function playBossDefeat(): void {
+  noise(0.32, 0.03, 420, "lowpass");
+  tone(196, 0.34, "triangle", 0.035, 392);
+  tone(294, 0.34, "sine", 0.025, 587, 0.09);
+}
+
+function playRunEnd(won: boolean): void {
+  if (won) {
+    tone(392, 0.42, "sine", 0.03, 523);
+    tone(494, 0.42, "triangle", 0.022, 659, 0.1);
+    tone(587, 0.5, "sine", 0.022, 784, 0.2);
+  } else {
+    tone(146, 0.38, "sawtooth", 0.035, 73);
+    noise(0.18, 0.016, 280, "lowpass");
+  }
 }
 
 function tick(timestamp: number): void {
