@@ -2,13 +2,13 @@
 
 ## What I built
 
-Bloomshift is a five-minute browser survival game about steering a flower through an increasingly crowded field. It fires automatically; defeated enemies leave growth seeds, and levels offer mutations. A final bloom arrives near the end: defeating it wins the run, while losing every heart or failing to defeat it ends the run. Bursting Seed lets defeated enemies trigger chain explosions. Its cream, coral, cyan and lime art and layered procedural sound were created for this prototype.
+Bloomshift is a five-minute browser survival game where a flower survives an increasingly crowded field. It fires automatically; defeated enemies leave growth seeds, and levels offer mutations. Defeating the final bloom wins; losing every heart or failing to defeat it ends the run. Bursting Seed makes defeated enemies trigger chain explosions. Its cream, coral, cyan and lime art and procedural sound were created for this prototype.
 
 ## The moments that mattered
 
 ### 1. Removing the tutorial without hiding the game
 
-An instruction panel could explain movement, firing and upgrades, but it would violate the brief and delay play. Instead, one oversized play symbol starts the game, pointer or touch input moves the flower, and firing is automatic. The HUD only names changing state: time, hearts, growth and level. I tested desktop and 390-pixel mobile layouts so play and movement remain visible without explanatory copy. This direction began in [`ab5ce29`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/ab5ce29) and playing the built game exposed a blank opening second, so I placed one deliberately slow enemy at the edge to make the loop readable immediately in [`0ac6379`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/0ac6379).
+An instruction panel would violate the brief and delay play. Instead, one oversized play symbol starts the game, pointer or touch input moves the flower, and firing is automatic. The HUD shows only time, hearts, growth and level. I tested desktop and 390-pixel mobile layouts so play and movement remain visible without explanatory copy. This direction began in [`ab5ce29`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/ab5ce29) and playing the built game exposed a blank opening second, so I placed one deliberately slow enemy at the edge to make the loop readable immediately in [`0ac6379`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/0ac6379).
 
 ### 2. Letting the harness reject a plausible feature
 
