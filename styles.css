@@ -115,17 +115,8 @@ h1 i { color: var(--coral); font-family: Georgia, serif; font-weight: 400; }
 .run-stats dt, .run-stats dd { margin: 0; font-family: "DM Mono", monospace; }
 .run-stats dt { margin-bottom: 7px; font-size: 0.58rem; letter-spacing: 0.1em; }
 .run-stats dd { font-size: clamp(1rem, 2.5vw, 1.45rem); }
-.result-actions { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 32px; }
-.replay-button { width: 66px; height: 66px; margin-top: 0; }
+.replay-button { width: 66px; height: 66px; margin-top: 32px; }
 .replay-button svg { width: 27px; fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.continue-button {
-  min-height: 66px; padding: 0 25px; border: 2px solid var(--ink); border-radius: 99px;
-  background: var(--lime); box-shadow: 5px 5px 0 var(--ink); font-family: "DM Mono", monospace;
-  font-size: 0.72rem; font-weight: 500; letter-spacing: 0.1em; cursor: pointer;
-  transition: box-shadow 120ms ease, transform 120ms ease;
-}
-.continue-button span { margin-left: 12px; font-size: 1.1rem; }
-.continue-button:hover { box-shadow: 2px 2px 0 var(--ink); transform: translate(3px, 3px); }
 
 .boss-banner {
   position: absolute; z-index: 5; right: 28px; bottom: 25px; left: 28px; display: grid;

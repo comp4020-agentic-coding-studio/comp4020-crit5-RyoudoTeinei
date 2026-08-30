@@ -2,7 +2,7 @@
 
 ## What I built
 
-Bloomshift is a five-minute browser survival game about steering a flower through an increasingly crowded field. It fires automatically; defeated enemies leave growth seeds, and levels offer mutations. A final bloom arrives near the end: defeating it offers a restart or an endless continuation with the completed build. Bursting Seed lets defeated enemies trigger chain explosions. Its cream, coral, cyan and lime art and layered procedural sound were created for this prototype.
+Bloomshift is a five-minute browser survival game about steering a flower through an increasingly crowded field. It fires automatically; defeated enemies leave growth seeds, and levels offer mutations. A final bloom arrives near the end: defeating it wins the run, while losing every heart or failing to defeat it ends the run. Bursting Seed lets defeated enemies trigger chain explosions. Its cream, coral, cyan and lime art and layered procedural sound were created for this prototype.
 
 ## The moments that mattered
 
@@ -12,4 +12,4 @@ An instruction panel could explain movement, firing and upgrades, but it would v
 
 ### 2. Turning playtest problems into rules and pacing
 
-Contact damage is the central loss rule, so I separated it from rendering and tested both the final-heart ending and the 900 ms invulnerability window ([`0ba9671`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/0ba9671)). Later play showed that defeating the boss felt too final. I extended the run to five minutes, added replay and endless choices, and introduced chain explosions as the seventh upgrade. I also strengthened the Web Audio mix so attacks, impacts, pickups and the boss remain distinct. These changes are recorded in [`b578349`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/b578349). The typecheck, build and 19-test suite remained green.
+Contact damage is the central loss rule, so I separated it from rendering and tested both the final-heart ending and the 900 ms invulnerability window ([`0ba9671`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/0ba9671)). Later play showed that the final encounter needed more build-up, so I extended the run to five minutes and introduced chain explosions as the seventh upgrade. I also strengthened the Web Audio mix so attacks, impacts, pickups and the boss remain distinct. These changes are recorded in [`b578349`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit5-RyoudoTeinei/commit/b578349). The typecheck, build and 19-test suite remained green.

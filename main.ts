@@ -33,7 +33,6 @@ const context: CanvasRenderingContext2D = drawingContext;
 
 const startButton = must<HTMLButtonElement>("#start-button");
 const replayButton = must<HTMLButtonElement>("#replay-button");
-const continueButton = must<HTMLButtonElement>("#continue-button");
 const soundButton = must<HTMLButtonElement>("#sound-toggle");
 const startScreen = must<HTMLElement>("#start-screen");
 const levelScreen = must<HTMLElement>("#level-screen");
@@ -41,7 +40,6 @@ const resultScreen = must<HTMLElement>("#result-screen");
 const upgradeGrid = must<HTMLElement>("#upgrade-grid");
 const hud = must<HTMLElement>("#hud");
 const timerText = must<HTMLElement>("#timer");
-const timerLabel = must<HTMLElement>("#timer-label");
 const healthElement = must<HTMLElement>("#health");
 const levelText = must<HTMLElement>("#level");
 const xpFill = must<HTMLElement>("#xp-fill");
@@ -68,7 +66,6 @@ let kills = 0;
 let spawnTimer = 0;
 let enemySequence = 0;
 let bossSpawned = false;
-let endlessMode = false;
 let shake = 0;
 let lastExplosionSoundAt = -1_000;
 let lastFrame = performance.now();
@@ -115,7 +112,6 @@ function beginRun(): void {
   spawnTimer = 1.8;
   enemySequence = 0;
   bossSpawned = false;
-  endlessMode = false;
   shake = 0;
   lastExplosionSoundAt = -1_000;
   enemies = [];
@@ -158,9 +154,9 @@ function spawnOpeningEnemy(): void {
 }
 
 function updateGame(dt: number): void {
-  elapsed = endlessMode ? elapsed + dt : Math.min(ROUND_SECONDS, elapsed + dt);
+  elapsed = Math.min(ROUND_SECONDS, elapsed + dt);
   updatePlayer(dt);
-  if (!bossSpawned || endlessMode) {
+  if (!bossSpawned) {
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       spawnEnemy();
@@ -176,7 +172,7 @@ function updateGame(dt: number): void {
   updateParticles(dt);
   updateShockwaves(dt);
   shake = Math.max(0, shake - dt * 28);
-  if (!endlessMode && elapsed >= ROUND_SECONDS && state === "playing") endRun(false);
+  if (elapsed >= ROUND_SECONDS && state === "playing") endRun(false);
   refreshHud();
 }
 
@@ -450,30 +446,13 @@ function endRun(won: boolean): void {
   resultTime.textContent = formatTime(elapsed);
   resultKills.textContent = String(kills).padStart(3, "0");
   resultLevel.textContent = String(player.level).padStart(2, "0");
-  continueButton.hidden = !won;
   resultScreen.hidden = false;
   playRunEnd(won);
   window.setTimeout(() => replayButton.focus(), 50);
 }
 
-function continueRun(): void {
-  if (state !== "won") return;
-  state = "playing";
-  endlessMode = true;
-  elapsed = Math.max(elapsed, ROUND_SECONDS);
-  spawnTimer = 0.35;
-  resultScreen.hidden = true;
-  hud.classList.remove("is-hidden");
-  playRunStart();
-  refreshHud();
-  canvas.focus();
-}
-
 function refreshHud(): void {
-  timerLabel.textContent = endlessMode ? "STILL GROWING" : "BLOOM CLOSES IN";
-  timerText.textContent = endlessMode
-    ? `+${formatTime(Math.max(0, elapsed - ROUND_SECONDS))}`
-    : formatTime(Math.max(0, ROUND_SECONDS - elapsed));
+  timerText.textContent = formatTime(Math.max(0, ROUND_SECONDS - elapsed));
   levelText.textContent = String(player.level).padStart(2, "0");
   xpFill.style.width = `${Math.min(100, (player.xp / experienceNeeded(player.level)) * 100)}%`;
   healthElement.replaceChildren();
@@ -703,7 +682,6 @@ window.addEventListener("keyup", (event) => keys.delete(event.code));
 window.addEventListener("resize", resizeCanvas);
 startButton.addEventListener("click", beginRun);
 replayButton.addEventListener("click", beginRun);
-continueButton.addEventListener("click", continueRun);
 soundButton.addEventListener("click", () => {
   muted = !muted;
   soundButton.classList.toggle("is-muted", muted);

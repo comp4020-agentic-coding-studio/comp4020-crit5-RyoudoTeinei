@@ -39,7 +39,7 @@
 
         <div class="hud is-hidden" id="hud" aria-live="polite">
           <div class="timer-block">
-            <span class="eyebrow" id="timer-label">BLOOM CLOSES IN</span>
+            <span class="eyebrow">BLOOM CLOSES IN</span>
             <strong id="timer">05:00</strong>
           </div>
           <div class="health" id="health" aria-label="Five health remaining"></div>
@@ -75,16 +75,11 @@
               <div><dt>CLEARED</dt><dd id="result-kills">000</dd></div>
               <div><dt>GROWTH</dt><dd id="result-level">01</dd></div>
             </dl>
-            <div class="result-actions">
-              <button class="continue-button" id="continue-button" type="button" hidden>
-                KEEP GROWING <span aria-hidden="true">→</span>
-              </button>
-              <button class="replay-button" id="replay-button" type="button" aria-label="Begin another run">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
-                </svg>
-              </button>
-            </div>
+            <button class="replay-button" id="replay-button" type="button" aria-label="Begin another run">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
+              </svg>
+            </button>
           </div>
         </div>
 
